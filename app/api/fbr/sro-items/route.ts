@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const date = searchParams.get('date');
     const sroId = searchParams.get('sro_id');
-    const token = searchParams.get('token');
+    
+    // Get token from Authorization header (Bearer token)
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
     if (!token) {
       return NextResponse.json(

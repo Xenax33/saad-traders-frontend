@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { invoiceService, GetInvoicesParams } from '@/services/invoice.service';
-import type { CreateInvoiceRequest, ValidateInvoiceRequest } from '@/types/api';
+import type { CreateInvoiceRequest, CreateProductionInvoiceRequest, ValidateInvoiceRequest } from '@/types/api';
 import toast from 'react-hot-toast';
 
 // Helper function to handle API errors with validation messages
@@ -52,7 +52,7 @@ export function useInvoice(id: string) {
 }
 
 /**
- * Hook to create and post a new invoice to FBR
+ * Hook to create and post a new invoice to FBR (Test Environment)
  */
 export function useCreateInvoice() {
   const queryClient = useQueryClient();
@@ -65,6 +65,24 @@ export function useCreateInvoice() {
     },
     onError: (error: unknown) => {
       handleApiError(error, 'Failed to create invoice');
+    },
+  });
+}
+
+/**
+ * Hook to create and post a new invoice to FBR (Production Environment)
+ */
+export function useCreateProductionInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateProductionInvoiceRequest) => invoiceService.createProductionInvoice(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      toast.success('Invoice created and posted to FBR production successfully');
+    },
+    onError: (error: unknown) => {
+      handleApiError(error, 'Failed to create production invoice');
     },
   });
 }

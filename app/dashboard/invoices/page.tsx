@@ -3,11 +3,11 @@
 import { useState, useMemo } from 'react';
 import UserLayout from '@/components/layouts/UserLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { useInvoices, useCreateInvoice, useDeleteInvoice } from '@/hooks/useInvoices';
+import { useInvoices, useCreateInvoice, useCreateProductionInvoice, useDeleteInvoice } from '@/hooks/useInvoices';
 import { useBuyers } from '@/hooks/useBuyers';
 import { useHSCodes } from '@/hooks/useHSCodes';
 import { useMyScenarios } from '@/hooks/useScenarios';
-import type { CreateInvoiceRequest, InvoiceItem, Invoice } from '@/types/api';
+import type { CreateInvoiceRequest, CreateProductionInvoiceRequest, InvoiceItem, Invoice } from '@/types/api';
 import type { UserAssignedScenario } from '@/services/userScenarios.service';
 import { 
   Plus, 
@@ -96,6 +96,9 @@ export default function InvoicesPage() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
+  // Environment mode for form (test or production)
+  const [formEnvironmentMode, setFormEnvironmentMode] = useState<'TEST' | 'PRODUCTION'>('PRODUCTION');
+
   // Form state for creating invoice
   const [formData, setFormData] = useState<CreateInvoiceRequest>({
     invoiceType: 'Sale Invoice',
@@ -103,7 +106,7 @@ export default function InvoicesPage() {
     buyerId: '',
     scenarioId: '',
     invoiceRefNo: '',
-    isTestEnvironment: true,
+    isTestEnvironment: false,
     sroScheduleNo: '',
     sroItemSerialNo: '',
     items: [{
@@ -144,6 +147,7 @@ export default function InvoicesPage() {
   const { data: hsCodesData, refetch: refetchHSCodes } = useHSCodes({ limit: 100 });
   const { data: scenariosData, refetch: refetchScenarios } = useMyScenarios();
   const createInvoice = useCreateInvoice();
+  const createProductionInvoice = useCreateProductionInvoice();
   const deleteInvoice = useDeleteInvoice();
 
   const invoices = data?.data || [];
@@ -191,9 +195,11 @@ export default function InvoicesPage() {
 
   // Update item field
   const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
-    const updatedItems = [...formData.items];
-    updatedItems[index] = { ...updatedItems[index], [field]: value };
-    setFormData({ ...formData, items: updatedItems });
+    setFormData(prevFormData => {
+      const updatedItems = [...prevFormData.items];
+      updatedItems[index] = { ...updatedItems[index], [field]: value };
+      return { ...prevFormData, items: updatedItems };
+    });
   };
 
   // Fetch UoM options from FBR API when HS code is selected
@@ -215,7 +221,7 @@ export default function InvoicesPage() {
     
     try {
       // Determine which token to use (production first, then test)
-      const token = formData.isTestEnvironment 
+      const token = formEnvironmentMode === 'TEST' 
         ? user.postInvoiceTokenTest 
         : user.postInvoiceToken;
       
@@ -225,7 +231,11 @@ export default function InvoicesPage() {
         return;
       }
       
-      const response = await fetch(`/api/fbr/hs-uom?hs_code=${selectedHSCode.hsCode}&annexure_id=1&token=${encodeURIComponent(token)}`);
+      const response = await fetch(`/api/fbr/hs-uom?hs_code=${selectedHSCode.hsCode}&annexure_id=1`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch UoM options');
@@ -259,15 +269,20 @@ export default function InvoicesPage() {
     setLoadingRates(prev => ({ ...prev, [cacheKey]: true }));
     
     try {
-      // For now, use hardcoded values for the API call (you may need to get these from scenario data)
-      // transTypeId: 24 (provided in requirements)
-      // originationSupplier: 1 (provided in requirements)
-      // date: Today's date in format dd-MmmYYYY
+      // Find the selected scenario to get its fbrId
+      const selectedScenario = scenarios.find(s => s.scenarioId === scenarioId);
+      if (!selectedScenario?.fbrId) {
+        console.warn('No fbrId found for selected scenario');
+        setLoadingRates(prev => ({ ...prev, [cacheKey]: false }));
+        return;
+      }
+      
+      // Date format: dd-MmmYYYY (e.g., "04-Feb2024")
       const today = new Date();
       const date = `${String(today.getDate()).padStart(2, '0')}-${today.toLocaleString('en-US', { month: 'short' })}${today.getFullYear()}`;
       
       // Determine which token to use (production first, then test)
-      const token = formData.isTestEnvironment 
+      const token = formEnvironmentMode === 'TEST' 
         ? user.postInvoiceTokenTest 
         : user.postInvoiceToken;
       
@@ -277,7 +292,11 @@ export default function InvoicesPage() {
         return;
       }
       
-      const response = await fetch(`/api/fbr/rates?date=${encodeURIComponent(date)}&transTypeId=24&originationSupplier=1&token=${encodeURIComponent(token)}`);
+      const response = await fetch(`/api/fbr/rates?date=${encodeURIComponent(date)}&transTypeId=${selectedScenario.fbrId}&originationSupplier=1`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch rate options');
@@ -318,7 +337,7 @@ export default function InvoicesPage() {
       const date = `${String(today.getDate()).padStart(2, '0')}-${today.toLocaleString('en-US', { month: 'short' })}${today.getFullYear()}`;
       
       // Determine which token to use
-      const token = formData.isTestEnvironment 
+      const token = formEnvironmentMode === 'TEST' 
         ? user.postInvoiceTokenTest 
         : user.postInvoiceToken;
       
@@ -328,7 +347,11 @@ export default function InvoicesPage() {
         return;
       }
       
-      const response = await fetch(`/api/fbr/sro-schedule?rate_id=${rateId}&date=${encodeURIComponent(date)}&origination_supplier_csv=1&token=${encodeURIComponent(token)}`);
+      const response = await fetch(`/api/fbr/sro-schedule?rate_id=${rateId}&date=${encodeURIComponent(date)}&origination_supplier_csv=1`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch SRO Schedule options');
@@ -362,7 +385,7 @@ export default function InvoicesPage() {
       const date = today.toISOString().split('T')[0];
       
       // Determine which token to use
-      const token = formData.isTestEnvironment 
+      const token = formEnvironmentMode === 'TEST' 
         ? user.postInvoiceTokenTest 
         : user.postInvoiceToken;
       
@@ -372,7 +395,11 @@ export default function InvoicesPage() {
         return;
       }
       
-      const response = await fetch(`/api/fbr/sro-items?date=${encodeURIComponent(date)}&sro_id=${sroId}&token=${encodeURIComponent(token)}`);
+      const response = await fetch(`/api/fbr/sro-items?date=${encodeURIComponent(date)}&sro_id=${sroId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch SRO Item options');
@@ -390,7 +417,25 @@ export default function InvoicesPage() {
   // Create invoice
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createInvoice.mutateAsync(formData);
+    
+    if (formEnvironmentMode === 'TEST') {
+      // Test environment - use regular endpoint with scenarioId
+      await createInvoice.mutateAsync(formData);
+    } else {
+      // Production environment - use production endpoint without scenarioId
+      const prodData: CreateProductionInvoiceRequest = {
+        invoiceType: formData.invoiceType,
+        invoiceDate: formData.invoiceDate,
+        buyerId: formData.buyerId,
+        invoiceRefNo: formData.invoiceRefNo,
+        items: formData.items.map(item => ({
+          ...item,
+          saleType: item.saleType || 'Goods at standard rate (default)',
+        })),
+      };
+      await createProductionInvoice.mutateAsync(prodData);
+    }
+    
     setShowCreateModal(false);
     resetForm();
   };
@@ -440,13 +485,14 @@ export default function InvoicesPage() {
 
   // Reset form
   const resetForm = () => {
+    setFormEnvironmentMode('PRODUCTION');
     setFormData({
       invoiceType: 'Sale Invoice',
       invoiceDate: new Date().toISOString().split('T')[0],
       buyerId: '',
       scenarioId: '',
       invoiceRefNo: '',
-      isTestEnvironment: true,
+      isTestEnvironment: false,
       sroScheduleNo: '',
       sroItemSerialNo: '',
       items: [{
@@ -792,7 +838,11 @@ export default function InvoicesPage() {
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
                       Scenario <span className="text-red-500">*</span>
-                      <span className="text-xs font-normal text-purple-600 ml-2">(Provides saleType)</span>
+                      <span className="text-xs font-normal text-slate-600 ml-2">
+                        {formEnvironmentMode === 'TEST' 
+                          ? '(Provides saleType)' 
+                          : '(For fetching rates & SRO data)'}
+                      </span>
                     </label>
                     <select
                       required
@@ -808,7 +858,9 @@ export default function InvoicesPage() {
                       ))}
                     </select>
                     <p className="mt-1 text-xs text-slate-500">
-                      Scenario description will be used as saleType for all invoice items
+                      {formEnvironmentMode === 'TEST' 
+                        ? 'Scenario description will be used as saleType for all invoice items' 
+                        : 'Used to fetch available rates and SRO schedules'}
                     </p>
                   </div>
 
@@ -830,8 +882,12 @@ export default function InvoicesPage() {
                       Environment <span className="text-red-500">*</span>
                     </label>
                     <select
-                      value={formData.isTestEnvironment ? 'test' : 'production'}
-                      onChange={(e) => setFormData({ ...formData, isTestEnvironment: e.target.value === 'test' })}
+                      value={formEnvironmentMode === 'TEST' ? 'test' : 'production'}
+                      onChange={(e) => {
+                        const mode = e.target.value === 'test' ? 'TEST' : 'PRODUCTION';
+                        setFormEnvironmentMode(mode);
+                        setFormData({ ...formData, isTestEnvironment: e.target.value === 'test' });
+                      }}
                       className="w-full rounded-xl border-2 border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
                       <option value="test">Test/Sandbox</option>
@@ -1069,10 +1125,10 @@ export default function InvoicesPage() {
 
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          SRO Schedule <span className="text-red-500">*</span>
+                          SRO Schedule {sroScheduleOptions[item.rate]?.length > 0 && <span className="text-red-500">*</span>}
                         </label>
                         <select
-                          required
+                          required={sroScheduleOptions[item.rate]?.length > 0}
                           value={formData.sroScheduleNo}
                           onChange={(e) => handleSroScheduleChange(e.target.value)}
                           disabled={!item.rate || loadingSroSchedule[item.rate]}
@@ -1089,10 +1145,10 @@ export default function InvoicesPage() {
 
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          SRO Item Serial No <span className="text-red-500">*</span>
+                          SRO Item Serial No {formData.sroScheduleNo && sroItemOptions[formData.sroScheduleNo]?.length > 0 && <span className="text-red-500">*</span>}
                         </label>
                         <select
-                          required
+                          required={formData.sroScheduleNo ? sroItemOptions[formData.sroScheduleNo]?.length > 0 : false}
                           value={formData.sroItemSerialNo}
                           onChange={(e) => setFormData({ ...formData, sroItemSerialNo: e.target.value })}
                           disabled={!formData.sroScheduleNo || Boolean(formData.sroScheduleNo && loadingSroItems[formData.sroScheduleNo])}
@@ -1106,6 +1162,26 @@ export default function InvoicesPage() {
                           ))}
                         </select>
                       </div>
+
+                      {formEnvironmentMode === 'PRODUCTION' && (
+                        <div className="md:col-span-2 lg:col-span-3">
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Sale Type <span className="text-red-500">*</span>
+                            <span className="text-xs font-normal text-emerald-600 ml-2">(Required for Production)</span>
+                          </label>
+                          <input
+                            type="text"
+                            required={formEnvironmentMode === 'PRODUCTION'}
+                            value={item.saleType}
+                            onChange={(e) => updateItem(index, 'saleType', e.target.value)}
+                            className="w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            placeholder="e.g., Goods at standard rate (default)"
+                          />
+                          <p className="mt-1 text-xs text-slate-500">
+                            Specify the type of sale (e.g., "Goods at standard rate (default)")
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1124,10 +1200,10 @@ export default function InvoicesPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={createInvoice.isPending}
+                  disabled={createInvoice.isPending || createProductionInvoice.isPending}
                   className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 font-semibold text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {createInvoice.isPending ? 'Creating...' : 'Create Invoice'}
+                  {createInvoice.isPending || createProductionInvoice.isPending ? 'Creating...' : 'Create Invoice'}
                 </button>
               </div>
             </form>

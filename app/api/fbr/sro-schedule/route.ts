@@ -13,7 +13,10 @@ export async function GET(request: NextRequest) {
     const rateId = searchParams.get('rate_id');
     const date = searchParams.get('date');
     const originationSupplierCsv = searchParams.get('origination_supplier_csv');
-    const token = searchParams.get('token');
+    
+    // Get token from Authorization header (Bearer token)
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
     if (!token) {
       return NextResponse.json(

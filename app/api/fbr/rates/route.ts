@@ -13,7 +13,10 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get('date');
     const transTypeId = searchParams.get('transTypeId');
     const originationSupplier = searchParams.get('originationSupplier');
-    const token = searchParams.get('token');
+    
+    // Get token from Authorization header (Bearer token)
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
     if (!token) {
       return NextResponse.json(

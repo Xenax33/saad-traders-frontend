@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const hsCode = searchParams.get('hs_code');
     const annexureId = searchParams.get('annexure_id') || '1';
-    const token = searchParams.get('token');
+    
+    // Get token from Authorization header (Bearer token)
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
     if (!hsCode) {
       return NextResponse.json(

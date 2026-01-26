@@ -1,5 +1,5 @@
 import axiosInstance from '@/lib/axios';
-import type { Invoice, CreateInvoiceRequest, ValidateInvoiceRequest, ValidateInvoiceResponse, PaginatedResponse } from '@/types/api';
+import type { Invoice, CreateInvoiceRequest, CreateProductionInvoiceRequest, ValidateInvoiceRequest, ValidateInvoiceResponse, PaginatedResponse } from '@/types/api';
 
 export interface GetInvoicesParams {
   page?: number;
@@ -31,10 +31,18 @@ export const invoiceService = {
   },
 
   /**
-   * Create and post a new invoice to FBR
+   * Create and post a new invoice to FBR (Test Environment)
    */
   async createInvoice(data: CreateInvoiceRequest): Promise<{ invoice: Invoice; fbrResponse: Record<string, unknown> }> {
     const response = await axiosInstance.post('/v1/invoices', data);
+    return response.data.data;
+  },
+
+  /**
+   * Create and post a new invoice to FBR (Production Environment)
+   */
+  async createProductionInvoice(data: CreateProductionInvoiceRequest): Promise<{ invoice: Invoice; fbrResponse: Record<string, unknown> }> {
+    const response = await axiosInstance.post('/v1/invoices/production', data);
     return response.data.data;
   },
 

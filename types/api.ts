@@ -277,6 +277,14 @@ export interface CreateInvoiceRequest {
   items: InvoiceItem[];
 }
 
+export interface CreateProductionInvoiceRequest {
+  invoiceType: string;
+  invoiceDate: string;
+  buyerId: string;
+  invoiceRefNo?: string;
+  items: InvoiceItem[];
+}
+
 export interface ValidateInvoiceRequest {
   invoiceNumber: string;
   isTestEnvironment?: boolean;
