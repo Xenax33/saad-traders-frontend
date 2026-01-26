@@ -1015,7 +1015,7 @@ export default function InvoicesPage() {
                         <input
                           type="number"
                           required
-                          value={item.quantity || ''}
+                          value={item.quantity === 1 ? '' : item.quantity}
                           onChange={(e) => updateItem(index, 'quantity', e.target.value === '' ? 1 : parseFloat(e.target.value))}
                           placeholder="1"
                           className="w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
