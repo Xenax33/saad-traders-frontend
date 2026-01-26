@@ -282,7 +282,7 @@ export interface CreateProductionInvoiceRequest {
   invoiceDate: string;
   buyerId: string;
   invoiceRefNo?: string;
-  items: InvoiceItem[];
+  items: Array<Omit<InvoiceItem, 'extraTax'> & { extraTax: number | string }>;
 }
 
 export interface ValidateInvoiceRequest {

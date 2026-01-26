@@ -431,6 +431,8 @@ export default function InvoicesPage() {
         items: formData.items.map(item => ({
           ...item,
           saleType: item.saleType || 'Goods at standard rate (default)',
+          // Convert extraTax from string to number for production API
+          extraTax: item.extraTax ? parseFloat(item.extraTax) : 0,
         })),
       };
       await createProductionInvoice.mutateAsync(prodData);
@@ -1023,8 +1025,9 @@ export default function InvoicesPage() {
                           type="number"
                           required
                           step="0.01"
-                          value={item.totalValues}
-                          onChange={(e) => updateItem(index, 'totalValues', parseFloat(e.target.value))}
+                          value={item.totalValues || ''}
+                          onChange={(e) => updateItem(index, 'totalValues', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          placeholder="0.00"
                           className="w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
@@ -1037,8 +1040,9 @@ export default function InvoicesPage() {
                           type="number"
                           required
                           step="0.01"
-                          value={item.valueSalesExcludingST}
-                          onChange={(e) => updateItem(index, 'valueSalesExcludingST', parseFloat(e.target.value))}
+                          value={item.valueSalesExcludingST || ''}
+                          onChange={(e) => updateItem(index, 'valueSalesExcludingST', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          placeholder="0.00"
                           className="w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
@@ -1051,8 +1055,9 @@ export default function InvoicesPage() {
                           type="number"
                           required
                           step="0.01"
-                          value={item.fixedNotifiedValueOrRetailPrice}
-                          onChange={(e) => updateItem(index, 'fixedNotifiedValueOrRetailPrice', parseFloat(e.target.value))}
+                          value={item.fixedNotifiedValueOrRetailPrice || ''}
+                          onChange={(e) => updateItem(index, 'fixedNotifiedValueOrRetailPrice', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          placeholder="0.00"
                           className="w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
@@ -1065,8 +1070,9 @@ export default function InvoicesPage() {
                           type="number"
                           required
                           step="0.01"
-                          value={item.salesTaxApplicable}
-                          onChange={(e) => updateItem(index, 'salesTaxApplicable', parseFloat(e.target.value))}
+                          value={item.salesTaxApplicable || ''}
+                          onChange={(e) => updateItem(index, 'salesTaxApplicable', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          placeholder="0.00"
                           className="w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
@@ -1078,8 +1084,9 @@ export default function InvoicesPage() {
                         <input
                           type="number"
                           step="0.01"
-                          value={item.salesTaxWithheldAtSource}
-                          onChange={(e) => updateItem(index, 'salesTaxWithheldAtSource', parseFloat(e.target.value))}
+                          value={item.salesTaxWithheldAtSource || ''}
+                          onChange={(e) => updateItem(index, 'salesTaxWithheldAtSource', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          placeholder="0.00"
                           className="w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
@@ -1091,8 +1098,9 @@ export default function InvoicesPage() {
                         <input
                           type="number"
                           step="0.01"
-                          value={item.furtherTax}
-                          onChange={(e) => updateItem(index, 'furtherTax', parseFloat(e.target.value))}
+                          value={item.furtherTax || ''}
+                          onChange={(e) => updateItem(index, 'furtherTax', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          placeholder="0.00"
                           className="w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
@@ -1104,8 +1112,9 @@ export default function InvoicesPage() {
                         <input
                           type="number"
                           step="0.01"
-                          value={item.fedPayable}
-                          onChange={(e) => updateItem(index, 'fedPayable', parseFloat(e.target.value))}
+                          value={item.fedPayable || ''}
+                          onChange={(e) => updateItem(index, 'fedPayable', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          placeholder="0.00"
                           className="w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
@@ -1117,8 +1126,9 @@ export default function InvoicesPage() {
                         <input
                           type="number"
                           step="0.01"
-                          value={item.discount}
-                          onChange={(e) => updateItem(index, 'discount', parseFloat(e.target.value))}
+                          value={item.discount || ''}
+                          onChange={(e) => updateItem(index, 'discount', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          placeholder="0.00"
                           className="w-full rounded-lg border-2 border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>

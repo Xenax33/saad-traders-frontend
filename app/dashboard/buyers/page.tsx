@@ -423,15 +423,17 @@ export default function BuyersPage() {
                     setShowCreateModal(false);
                     resetForm();
                   }}
-                  className="w-full sm:flex-1 rounded-lg sm:rounded-xl border-2 border-slate-300 px-4 sm:px-6 py-2 sm:py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all duration-200"
+                  disabled={createBuyer.isPending}
+                  className="w-full sm:flex-1 rounded-lg sm:rounded-xl border-2 border-slate-300 px-4 sm:px-6 py-2 sm:py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="w-full sm:flex-1 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-6 py-2 sm:py-2.5 text-sm font-semibold text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg"
+                  disabled={createBuyer.isPending}
+                  className="w-full sm:flex-1 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-6 py-2 sm:py-2.5 text-sm font-semibold text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Create Buyer
+                  {createBuyer.isPending ? 'Creating...' : 'Create Buyer'}
                 </button>
               </div>
             </form>
