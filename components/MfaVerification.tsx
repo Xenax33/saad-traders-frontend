@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useMfa } from '@/hooks/useMfa';
 
 interface MfaVerificationProps {
-  onSuccess: (accessToken?: string, refreshToken?: string) => void;
+  onSuccess: (accessToken?: string, refreshToken?: string, userData?: any) => void;
   onError?: (message: string) => void;
   userEmail?: string;
 }
@@ -53,7 +53,7 @@ export default function MfaVerification({ onSuccess, onError }: MfaVerificationP
 
     const result = await verifyMfa(totpCode);
     if (result) {
-      onSuccess(result.accessToken, result.refreshToken);
+      onSuccess(result.accessToken, result.refreshToken, result.user);
     } else if (error) {
       onError?.(error.message);
     }
@@ -70,7 +70,7 @@ export default function MfaVerification({ onSuccess, onError }: MfaVerificationP
 
     const result = await verifyMfa(undefined, backupCode.trim());
     if (result) {
-      onSuccess(result.accessToken, result.refreshToken);
+      onSuccess(result.accessToken, result.refreshToken, result.user);
     } else if (error) {
       onError?.(error.message);
     }

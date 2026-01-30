@@ -9,6 +9,7 @@ import ForcedMfaEnrollment from './forced-mfa-enrollment';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { saveTokens } from '@/lib/tokenManager';
+import Cookies from 'js-cookie';
 
 type LoginStep = 'password' | 'mfa' | 'forced-enrollment';
 
@@ -60,8 +61,10 @@ export default function LoginPage() {
         return;
       }
 
+      // Successful login without MFA - redirect based on role
+      const redirectPath = response?.user?.role === 'ADMIN' ? '/admin' : '/dashboard';
       toast.success('Login successful!');
-      router.push('/dashboard');
+      router.push(redirectPath);
     } catch (error: any) {
       console.error('Login failed:', error);
       hideLoading();
@@ -86,12 +89,25 @@ export default function LoginPage() {
     setEnrollmentData(null);
   };
 
-  const handleMfaVerifySuccess = (accessToken?: string, refreshToken?: string) => {
+  const handleMfaVerifySuccess = (accessToken?: string, refreshToken?: string, userData?: any) => {
     if (accessToken && refreshToken) {
       saveTokens(accessToken, refreshToken);
+      
+      // Save user data to cookies
+      if (userData) {
+        Cookies.set('user', JSON.stringify(userData), { 
+          expires: 7,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        });
+      }
     }
+    
+    // Determine redirect based on user role
+    const redirectPath = userData?.role === 'ADMIN' ? '/admin' : '/dashboard';
+    
     toast.success('Login successful!');
-    router.push('/dashboard');
+    router.push(redirectPath);
   };
 
   return (
