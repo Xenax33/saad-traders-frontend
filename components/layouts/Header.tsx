@@ -26,9 +26,8 @@ export default function Header() {
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-3 group">
-          <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all">
-            <span className="font-display text-white text-xl">ST</span>
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-emerald-900/20 to-transparent"></div>
+          <div className="relative h-14 w-14 rounded-xl flex items-center justify-center group-hover:scale-105 transition-all">
+            <img src="/logos/company-logo.png" alt="Saad Traders" className="h-14 w-14 object-contain" />
           </div>
           <div className="flex flex-col">
             <span className="font-display text-xl text-stone-900">Saad Traders</span>

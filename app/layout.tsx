@@ -105,6 +105,18 @@ export default function RootLayout({
         <link rel="canonical" href="https://saadtraders.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#047857" />
+        
+        {/* Favicon and App Icons */}
+        <link rel="icon" type="image/svg+xml" href="/logos/company-logo.png" />
+        <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-192x192.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+        <link rel="shortcut icon" href="/icons/icon-192x192.png" />
+        
+        {/* PWA Icons */}
+        <link rel="manifest" href="/manifest.json" />
+        
         {/* JSON-LD Structured Data */}
         <script
           type="application/ld+json"

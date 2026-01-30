@@ -11,9 +11,8 @@ export default function Footer() {
           {/* Company Info */}
           <div className="lg:col-span-5">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="relative h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 flex items-center justify-center shadow-lg">
-                <span className="font-display text-white text-xl">ST</span>
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-emerald-900/20 to-transparent"></div>
+              <div className="relative h-14 w-14 rounded-full bg-white flex items-center justify-center shadow-lg">
+                <img src="/logos/company-logo.png" alt="Saad Traders" className="h-10 w-10 object-contain" />
               </div>
               <div className="flex flex-col">
                 <span className="font-display text-xl text-white">Saad Traders</span>

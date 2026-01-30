@@ -22,6 +22,11 @@ const styles = StyleSheet.create({
     borderBottomStyle: 'solid',
   },
   headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerLeftText: {
     flexDirection: 'column',
   },
   headerRight: {
@@ -240,6 +245,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  companyLogo: {
+    width: 72,
+    height: 72,
+    objectFit: 'contain',
   },
   fbrLogo: {
     width: 72,
@@ -492,10 +502,11 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice }) => {
           </View>
           
           <View style={styles.footerRight}>
+            <Image src="/logos/company-logo.png" style={styles.companyLogo} />
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <Image src="/fbr-qr-code.png" style={styles.qrCode} />
+            <Image src="/logos/fbr-qr-code.png" style={styles.qrCode} />
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <Image src="/fbr-logo.png" style={styles.fbrLogo} />
+            <Image src="/logos/fbr-logo.png" style={styles.fbrLogo} />
           </View>
         </View>
       </Page>

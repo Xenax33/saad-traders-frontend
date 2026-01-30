@@ -2426,10 +2426,14 @@ curl -X POST http://localhost:5000/api/v1/invoices \
   }'
 ```
 
-**Success Response (201 Created)**:
+**Success Response - Valid Invoice (201 Created)**:
+
+**Important**: The invoice is only saved to the database if the FBR validation response indicates success (statusCode "00"). Check the `savedToDatabase` field and `status` to determine if the invoice was saved.
+
 ```json
 {
   "status": "success",
+  "message": "Invoice posted and saved successfully",
   "data": {
     "invoice": {
       "id": "770e8400-e29b-41d4-a716-446655440001",
@@ -2439,11 +2443,25 @@ curl -X POST http://localhost:5000/api/v1/invoices \
       "invoiceType": "Sale Invoice",
       "invoiceDate": "2026-01-17T00:00:00.000Z",
       "invoiceRefNo": "INV-2026-001",
-      "fbrInvoiceNumber": "FBR123456789",
+      "fbrInvoiceNumber": "3520223926179DIABXVCA566695",
       "fbrResponse": {
-        "invoiceNumber": "FBR123456789",
-        "status": "success",
-        "message": "Invoice posted successfully"
+        "invoiceNumber": "3520223926179DIABXVCA566695",
+        "dated": "2026-01-23 21:02:52",
+        "validationResponse": {
+          "statusCode": "00",
+          "status": "Valid",
+          "error": "",
+          "invoiceStatuses": [
+            {
+              "itemSNo": "1",
+              "statusCode": "00",
+              "status": "Valid",
+              "invoiceNo": "3520223926179DIABXVCA566695-1",
+              "errorCode": "",
+              "error": ""
+            }
+          ]
+        }
       },
       "isTestEnvironment": true,
       "createdAt": "2026-01-17T10:00:00.000Z",
@@ -2493,12 +2511,71 @@ curl -X POST http://localhost:5000/api/v1/invoices \
       }
     },
     "fbrResponse": {
-      "invoiceNumber": "FBR123456789",
-      "status": "success",
-      "message": "Invoice posted successfully"
-    }
+      "invoiceNumber": "3520223926179DIABXVCA566695",
+      "dated": "2026-01-23 21:02:52",
+      "validationResponse": {
+        "statusCode": "00",
+        "status": "Valid",
+        "error": "",
+        "invoiceStatuses": [
+          {
+            "itemSNo": "1",
+            "statusCode": "00",
+            "status": "Valid",
+            "invoiceNo": "3520223926179DIABXVCA566695-1",
+            "errorCode": "",
+            "error": ""
+          }
+        ]
+      }
+    },
+    "savedToDatabase": true
   }
 }
+```
+
+**Validation Failed Response - Invalid Invoice (200 OK)**:
+
+When FBR returns a validation error (statusCode "01" or any non-"00" code), the invoice is NOT saved to the database:
+
+```json
+{
+  "status": "validation_failed",
+  "message": "Invoice posted to FBR but validation failed. Invoice not saved.",
+  "data": {
+    "invoice": null,
+    "fbrResponse": {
+      "dated": "2026-01-23 13:32:29",
+      "validationResponse": {
+        "statusCode": "01",
+        "status": "Invalid",
+        "error": "",
+        "invoiceStatuses": [
+          {
+            "itemSNo": "1",
+            "statusCode": "01",
+            "status": "Invalid",
+            "invoiceNo": null,
+            "errorCode": "0078",
+            "error": "Valid Item Sr. No. is mandatory where SRO/Schedule No. is provided. Please refer to relevant reference API in the technical document for DI API for valid Item Sr. No. for the provided SRO/Schedule No."
+          }
+        ]
+      }
+    },
+    "savedToDatabase": false
+  }
+}
+```
+
+**Response Field Explanations**:
+- `status`: "success" when validated and saved, "validation_failed" when FBR validation failed
+- `message`: Human-readable message describing the outcome
+- `invoice`: Contains invoice data when saved, `null` when validation failed
+- `fbrResponse`: Complete FBR API response (always included)
+- `savedToDatabase`: Boolean indicating if invoice was saved to database
+- `validationResponse.statusCode`: "00" = Valid, "01" or other = Invalid
+- `validationResponse.status`: "Valid" or "Invalid"
+- `invoiceStatuses`: Array of validation results for each item
 ```
 
 **Error Responses**:
@@ -2715,10 +2792,14 @@ curl -X POST http://localhost:5000/api/v1/invoices/production \
   }'
 ```
 
-**Success Response (201 Created)**:
+**Success Response - Valid Invoice (201 Created)**:
+
+**Important**: The invoice is only saved to the database if the FBR validation response indicates success (statusCode "00"). Check the `savedToDatabase` field and `status` to determine if the invoice was saved.
+
 ```json
 {
   "status": "success",
+  "message": "Invoice posted and saved successfully",
   "data": {
     "invoice": {
       "id": "770e8400-e29b-41d4-a716-446655440001",
@@ -2728,11 +2809,25 @@ curl -X POST http://localhost:5000/api/v1/invoices/production \
       "invoiceType": "Sale Invoice",
       "invoiceDate": "2026-01-17T00:00:00.000Z",
       "invoiceRefNo": "INV-2026-001",
-      "fbrInvoiceNumber": "FBR123456789",
+      "fbrInvoiceNumber": "3520223926179DIABXVCA566695",
       "fbrResponse": {
-        "invoiceNumber": "FBR123456789",
-        "status": "success",
-        "message": "Invoice posted successfully"
+        "invoiceNumber": "3520223926179DIABXVCA566695",
+        "dated": "2026-01-23 21:02:52",
+        "validationResponse": {
+          "statusCode": "00",
+          "status": "Valid",
+          "error": "",
+          "invoiceStatuses": [
+            {
+              "itemSNo": "1",
+              "statusCode": "00",
+              "status": "Valid",
+              "invoiceNo": "3520223926179DIABXVCA566695-1",
+              "errorCode": "",
+              "error": ""
+            }
+          ]
+        }
       },
       "isTestEnvironment": false,
       "createdAt": "2026-01-17T10:00:00.000Z",
@@ -2777,12 +2872,71 @@ curl -X POST http://localhost:5000/api/v1/invoices/production \
       }
     },
     "fbrResponse": {
-      "invoiceNumber": "FBR123456789",
-      "status": "success",
-      "message": "Invoice posted successfully"
-    }
+      "invoiceNumber": "3520223926179DIABXVCA566695",
+      "dated": "2026-01-23 21:02:52",
+      "validationResponse": {
+        "statusCode": "00",
+        "status": "Valid",
+        "error": "",
+        "invoiceStatuses": [
+          {
+            "itemSNo": "1",
+            "statusCode": "00",
+            "status": "Valid",
+            "invoiceNo": "3520223926179DIABXVCA566695-1",
+            "errorCode": "",
+            "error": ""
+          }
+        ]
+      }
+    },
+    "savedToDatabase": true
   }
 }
+```
+
+**Validation Failed Response - Invalid Invoice (200 OK)**:
+
+When FBR returns a validation error (statusCode "01" or any non-"00" code), the invoice is NOT saved to the database:
+
+```json
+{
+  "status": "validation_failed",
+  "message": "Invoice posted to FBR but validation failed. Invoice not saved.",
+  "data": {
+    "invoice": null,
+    "fbrResponse": {
+      "dated": "2026-01-23 13:32:29",
+      "validationResponse": {
+        "statusCode": "01",
+        "status": "Invalid",
+        "error": "",
+        "invoiceStatuses": [
+          {
+            "itemSNo": "1",
+            "statusCode": "01",
+            "status": "Invalid",
+            "invoiceNo": null,
+            "errorCode": "0078",
+            "error": "Valid Item Sr. No. is mandatory where SRO/Schedule No. is provided. Please refer to relevant reference API in the technical document for DI API for valid Item Sr. No. for the provided SRO/Schedule No."
+          }
+        ]
+      }
+    },
+    "savedToDatabase": false
+  }
+}
+```
+
+**Response Field Explanations**:
+- `status`: "success" when validated and saved, "validation_failed" when FBR validation failed
+- `message`: Human-readable message describing the outcome
+- `invoice`: Contains invoice data when saved, `null` when validation failed
+- `fbrResponse`: Complete FBR API response (always included)
+- `savedToDatabase`: Boolean indicating if invoice was saved to database
+- `validationResponse.statusCode`: "00" = Valid, "01" or other = Invalid
+- `validationResponse.status`: "Valid" or "Invalid"
+- `invoiceStatuses`: Array of validation results for each item
 ```
 
 **Error Responses**:

@@ -122,7 +122,9 @@ export default function LoginPage() {
       <div className="relative z-10 grid w-full max-w-6xl gap-8 lg:grid-cols-[1.1fr_0.9fr] items-start">
         <div className="space-y-6">
           <Link href="/" className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 shadow-lg shadow-emerald-900/30 backdrop-blur transition hover:border-white/25 hover:bg-white/10">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 font-display text-lg font-semibold text-white shadow-lg shadow-emerald-900/40">ST</span>
+            <div className="h-14 w-14 flex items-center justify-center rounded-full bg-white/90 backdrop-blur-sm shadow-lg shadow-emerald-900/40">
+              <img src="/logos/company-logo.png" alt="Saad Traders" className="h-10 w-10 object-contain" />
+            </div>
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/90">Saad Traders Portal</p>
               <p className="text-sm text-stone-100/80">FBR-compliant access</p>
