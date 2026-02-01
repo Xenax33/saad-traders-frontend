@@ -50,6 +50,11 @@
   - [Get User Invoices](#3-get-user-invoices)
   - [Get Invoice by ID](#4-get-invoice-by-id)
   - [Delete Invoice](#5-delete-invoice)
+- [Invoice Print Settings APIs](#invoice-print-settings-apis)
+  - [Get Print Settings](#1-get-print-settings)
+  - [Save Print Settings](#2-save-print-settings)
+  - [Reset Print Settings](#3-reset-print-settings)
+  - [Get Available Fields](#4-get-available-fields)
 - [Error Responses](#error-responses)
 
 ---
@@ -3390,6 +3395,356 @@ curl -X DELETE "http://localhost:5000/api/v1/invoices/770e8400-e29b-41d4-a716-44
   "message": "Invoice not found"
 }
 ```
+
+---
+
+## Invoice Print Settings APIs
+
+The Invoice Print Settings API allows users to customize which invoice item fields to display in printed PDFs, adjust column widths, and configure custom fields inclusion. Each user has their own print settings with sensible defaults.
+
+### Base Route
+`/api/v1/invoice-print-settings`
+
+### Authentication
+All endpoints require JWT authentication via Bearer token.
+
+---
+
+### 1. Get Print Settings
+
+Retrieves the current user's print settings. If no custom settings exist, returns default settings.
+
+**Endpoint**: `GET /api/v1/invoice-print-settings`
+
+**Authentication**: Required
+
+**Response (200 OK) - With Custom Settings**:
+```json
+{
+  "status": "success",
+  "data": {
+    "printSettings": {
+      "id": "uuid",
+      "userId": "uuid",
+      "visibleFields": [
+        "itemNumber",
+        "productDescription",
+        "customField_123e4567-e89b-12d3-a456-426614174000",
+        "hsCode",
+        "quantity",
+        "customField_223e4567-e89b-12d3-a456-426614174001",
+        "uoM",
+        "totalValues",
+        "valueSalesExcludingST",
+        "salesTaxApplicable"
+      ],
+      "columnWidths": {
+        "itemNumber": 5,
+        "productDescription": 20,
+        "customField_123e4567-e89b-12d3-a456-426614174000": 12,
+        "hsCode": 10,
+        "quantity": 8,
+        "customField_223e4567-e89b-12d3-a456-426614174001": 10,
+        "uoM": 6,
+        "totalValues": 10,
+        "valueSalesExcludingST": 10,
+        "salesTaxApplicable": 10
+      },
+      "fontSize": "small",
+      "tableBorders": true,
+      "showItemNumbers": true,
+      "createdAt": "2026-02-01T10:00:00.000Z",
+      "updatedAt": "2026-02-01T10:00:00.000Z"
+    }
+  }
+}
+```
+
+**Note:** Custom fields are included in `visibleFields` array with `customField_` prefix followed by the UUID. They can be positioned anywhere among regular fields for flexible drag-and-drop ordering.
+
+**Response (200 OK) - No Custom Settings**:
+```json
+{
+  "status": "success",
+  "data": {
+    "printSettings": null,
+    "defaultSettings": {
+      "visibleFields": [
+        "itemNumber",
+        "productDescription",
+        "hsCode",
+        "quantity",
+        "uoM",
+        "rate",
+        "totalValues",
+        "valueSalesExcludingST",
+        "salesTaxApplicable"
+      ],
+      "columnWidths": {
+        "itemNumber": 5,
+        "productDescription": 20,
+        "hsCode": 10,
+        "quantity": 8,
+        "uoM": 6,
+        "rate": 8,
+        "totalValues": 10,
+        "valueSalesExcludingST": 10,
+        "fixedNotifiedValueOrRetailPrice": 10,
+        "salesTaxApplicable": 10,
+        "salesTaxWithheldAtSource": 10,
+        "furtherTax": 8,
+        "fedPayable": 8,
+        "discount": 8,
+        "sroScheduleNo": 10,
+        "sroItemSerialNo": 10
+      },
+      "fontSize": "small",
+      "tableBorders": true,
+      "showItemNumbers": true
+    }
+  }
+}
+```
+
+---
+
+### 2. Save Print Settings
+
+Creates or updates print settings for the current user (upsert logic). Supports custom fields with `customField_` prefix for flexible positioning.
+
+**Endpoint**: `POST /api/v1/invoice-print-settings`
+
+**Authentication**: Required
+
+**Request Body**:
+```json
+{
+  "visibleFields": [
+    "itemNumber",
+    "productDescription",
+    "customField_123e4567-e89b-12d3-a456-426614174000",
+    "quantity",
+    "totalValues"
+  ],
+  "columnWidths": {
+    "itemNumber": 8,
+    "productDescription": 30,
+    "customField_123e4567-e89b-12d3-a456-426614174000": 12,
+    "quantity": 12,
+    "totalValues": 15
+  },
+  "fontSize": "medium",
+  "tableBorders": true,
+  "showItemNumbers": true
+}
+```
+
+**Field Descriptions**:
+- `visibleFields` (array, required): Array of field keys including custom fields with `customField_` prefix (1-20 fields total)
+- `columnWidths` (object, required): Width percentages for all visible fields (1-50 per field)
+- `fontSize` (string, required): Font size - "small", "medium", or "large"
+- `tableBorders` (boolean, required): Whether to show table borders
+- `showItemNumbers` (boolean, required): Whether to show item numbers
+
+**Custom Field Format**:
+- Regular fields: Use field key directly (e.g., `"productDescription"`)
+- Custom fields: Use `"customField_"` + UUID (e.g., `"customField_123e4567-e89b-12d3-a456-426614174000"`)
+- Custom fields can be positioned anywhere in the `visibleFields` array for drag-and-drop ordering
+
+**Validation Rules**:
+- `visibleFields`: Array of strings, at least 1 field, maximum 20 fields (including custom fields)
+- `columnWidths`: Values must be numbers between 1 and 50
+- `fontSize`: Must be "small", "medium", or "large"
+- Total column widths should ideally sum to 100 (warning if not)
+- Custom field IDs must be valid UUIDs, belong to user, and be active
+
+**Response (200 OK)**:
+```json
+{
+  "status": "success",
+  "message": "Print settings saved successfully",
+  "data": {
+    "printSettings": {
+      "id": "uuid",
+      "userId": "uuid",
+      "visibleFields": [
+        "itemNumber",
+        "productDescription",
+        "customField_123e4567-e89b-12d3-a456-426614174000",
+        "quantity",
+        "totalValues"
+      ],
+      "columnWidths": {
+        "itemNumber": 8,
+        "productDescription": 30,
+        "customField_123e4567-e89b-12d3-a456-426614174000": 12,
+        "quantity": 12,
+        "totalValues": 15
+      },
+      "fontSize": "medium",
+      "tableBorders": true,
+      "showItemNumbers": true,
+      "createdAt": "2026-02-01T10:00:00.000Z",
+      "updatedAt": "2026-02-01T10:30:00.000Z"
+    }
+  },
+  "warning": "Total column width is 77%. Recommended: 100%"
+}
+```
+
+**Error Response (400 Bad Request - Invalid Custom Field)**:
+```json
+{
+  "status": "fail",
+  "error": {
+    "statusCode": 400,
+    "errors": [
+      {
+        "field": "customField_123e4567-e89b-12d3-a456-426614174000",
+        "message": "Custom field not found, inactive, or does not belong to your account"
+      }
+    ]
+  },
+  "message": "Validation failed: 1 custom field(s) are invalid"
+}
+```
+
+**Error Response (400 Bad Request - Validation)**:
+```json
+{
+  "status": "fail",
+  "error": {
+    "statusCode": 400,
+    "errors": [
+      {
+        "field": "visibleFields",
+        "message": "visibleFields must be an array with 1-15 fields"
+      },
+      {
+        "field": "fontSize",
+        "message": "fontSize must be \"small\", \"medium\", or \"large\""
+      }
+    ]
+  },
+  "message": "Validation failed"
+}
+```
+
+---
+
+### 3. Reset Print Settings
+
+Deletes user's custom settings, resetting to default settings.
+
+**Endpoint**: `DELETE /api/v1/invoice-print-settings`
+
+**Authentication**: Required
+
+**Response (200 OK)**:
+```json
+{
+  "status": "success",
+  "message": "Print settings reset to defaults"
+}
+```
+
+---
+
+### 4. Get Available Fields
+
+Returns metadata about all available fields for printing, including field names, labels, descriptions, categories, width constraints, and the user's active custom fields.
+
+**Endpoint**: `GET /api/v1/invoice-print-settings/available-fields`
+
+**Authentication**: Required
+
+**Response (200 OK)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "fields": [
+      {
+        "key": "itemNumber",
+        "label": "Item #",
+        "description": "Item serial number",
+        "category": "basic",
+        "defaultVisible": true,
+        "minWidth": 5,
+        "maxWidth": 10,
+        "required": false
+      },
+      {
+        "key": "productDescription",
+        "label": "Product Description",
+        "description": "Description of the product",
+        "category": "basic",
+        "defaultVisible": true,
+        "minWidth": 15,
+        "maxWidth": 40,
+        "required": true
+      },
+      // ... (all 16 regular fields)
+    ],
+    "customFields": [
+      {
+        "key": "customField_123e4567-e89b-12d3-a456-426614174000",
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "label": "Purchase Order Number",
+        "fieldName": "Purchase Order Number",
+        "fieldType": "text",
+        "description": "Custom field: Purchase Order Number",
+        "category": "custom",
+        "defaultVisible": false,
+        "minWidth": 8,
+        "maxWidth": 20,
+        "required": false
+      },
+      {
+        "key": "customField_223e4567-e89b-12d3-a456-426614174001",
+        "id": "223e4567-e89b-12d3-a456-426614174001",
+        "label": "Delivery Date",
+        "fieldName": "Delivery Date",
+        "fieldType": "date",
+        "description": "Custom field: Delivery Date",
+        "category": "custom",
+        "defaultVisible": false,
+        "minWidth": 8,
+        "maxWidth": 15,
+        "required": false
+      }
+    ],
+    "categories": [
+      { "key": "basic", "label": "Basic Information", "order": 1 },
+      { "key": "pricing", "label": "Pricing & Values", "order": 2 },
+      { "key": "tax", "label": "Tax Information", "order": 3 },
+      { "key": "compliance", "label": "Compliance & SRO", "order": 4 },
+      { "key": "custom", "label": "Custom Fields", "order": 5 }
+    ]
+  }
+}
+```
+
+**Field Metadata Properties**:
+- `key`: Unique identifier for the field (regular fields: field name, custom fields: `customField_` + UUID)
+- `label`: Display name for the field
+- `description`: Detailed description of the field
+- `category`: Category the field belongs to (basic, pricing, tax, compliance, custom)
+- `defaultVisible`: Whether the field is visible by default
+- `minWidth`: Minimum recommended column width percentage
+- `maxWidth`: Maximum recommended column width percentage
+- `required`: Whether the field must always be included
+
+**Custom Field Additional Properties**:
+- `id`: The UUID of the custom field
+- `fieldName`: Original custom field name
+- `fieldType`: Type of custom field (text, number, date, textarea)
+
+**Notes**:
+- Regular fields are always returned in the `fields` array
+- User's active custom fields are returned in the `customFields` array
+- Inactive or deleted custom fields are not included
+- Frontend can combine both arrays for field selection UI
 
 ---
 

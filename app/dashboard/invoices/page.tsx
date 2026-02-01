@@ -7,7 +7,9 @@ import { useInvoices, useCreateInvoice, useCreateProductionInvoice, useDeleteInv
 import { useBuyers } from '@/hooks/useBuyers';
 import { useHSCodes } from '@/hooks/useHSCodes';
 import { useMyScenarios } from '@/hooks/useScenarios';
-import type { CreateInvoiceRequest, CreateProductionInvoiceRequest, InvoiceItem, Invoice } from '@/types/api';
+import { useCustomFields } from '@/hooks/useCustomFields';
+import { usePrintSettings, useAvailableFields } from '@/hooks/usePrintSettings';
+import type { CreateInvoiceRequest, CreateProductionInvoiceRequest, InvoiceItem, Invoice, InvoiceCustomField } from '@/types/api';
 import type { UserAssignedScenario } from '@/services/userScenarios.service';
 import {
   Plus,
@@ -24,10 +26,13 @@ import {
   Eye,
   Filter,
   Download,
-  Printer
+  Printer,
+  Settings
 } from 'lucide-react';
 import { InvoicePDF } from '@/components/InvoicePDF';
 import { downloadInvoicePDF, printInvoicePDF } from '@/lib/pdf-utils';
+import { toast } from 'react-hot-toast';
+import PrintSettingsModal from '@/components/PrintSettingsModal';
 
 export default function InvoicesPage() {
   // Helper function to safely format numbers with 2 decimal places
@@ -90,6 +95,7 @@ export default function InvoicesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showPrintSettingsModal, setShowPrintSettingsModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   // PDF generation states
@@ -114,7 +120,7 @@ export default function InvoicesPage() {
       productDescription: '',
       rate: '17%',
       uoM: 'PCS',
-      quantity: 1,
+      quantity: 0,
       totalValues: 0,
       valueSalesExcludingST: 0,
       fixedNotifiedValueOrRetailPrice: 0,
@@ -146,6 +152,9 @@ export default function InvoicesPage() {
   const { data: buyersData, refetch: refetchBuyers } = useBuyers({ limit: 100 });
   const { data: hsCodesData, refetch: refetchHSCodes } = useHSCodes({ limit: 100 });
   const { data: scenariosData, refetch: refetchScenarios } = useMyScenarios();
+  const { data: customFieldsData } = useCustomFields(false); // Only active fields
+  const { data: printSettingsData } = usePrintSettings();
+  const { data: availableFieldsData } = useAvailableFields();
   const createInvoice = useCreateInvoice();
   const createProductionInvoice = useCreateProductionInvoice();
   const deleteInvoice = useDeleteInvoice();
@@ -156,6 +165,9 @@ export default function InvoicesPage() {
   const buyers = buyersData?.data || [];
   const hsCodes = hsCodesData?.data || [];
   const scenarios = scenariosData || [];
+  const customFields = customFieldsData?.customFields || [];
+  const printSettings = printSettingsData?.printSettings || printSettingsData?.defaultSettings || null;
+  const customFieldsForPDF = availableFieldsData?.customFields || [];
 
   // Add new item to invoice
   const addItem = () => {
@@ -166,7 +178,7 @@ export default function InvoicesPage() {
         productDescription: '',
         rate: '17%',
         uoM: 'PCS',
-        quantity: 1,
+        quantity: 0,
         totalValues: 0,
         valueSalesExcludingST: 0,
         fixedNotifiedValueOrRetailPrice: 0,
@@ -179,6 +191,7 @@ export default function InvoicesPage() {
         discount: 0,
         saleType: '',
         sroItemSerialNo: '',
+        customFields: [],
       }],
     });
   };
@@ -214,9 +227,7 @@ export default function InvoicesPage() {
 
     const cacheKey = hsCodeId;
 
-    // Check if we already have UoM data for this HS code
-    if (uomOptions[cacheKey]) return;
-
+    // Always fetch fresh UoM data from FBR API (no caching)
     setLoadingUoM(prev => ({ ...prev, [cacheKey]: true }));
 
     try {
@@ -262,10 +273,6 @@ export default function InvoicesPage() {
     if (!scenarioId || !user) return;
 
     const cacheKey = scenarioId;
-
-    // Check if we already have rate data for this scenario
-    if (rateOptions[cacheKey]) return;
-
     setLoadingRates(prev => ({ ...prev, [cacheKey]: true }));
 
     try {
@@ -425,39 +432,92 @@ export default function InvoicesPage() {
       return;
     }
 
-    if (formEnvironmentMode === 'TEST') {
-      // Test environment - use regular endpoint with scenarioId
-      const salesType = selectedScenario.salesType;
+    try {
+      let response: any;
 
-      const testData = {
-        ...formData,
-        items: formData.items.map(item => ({
-          ...item,
-          saleType: salesType,
-        })),
-      };
-      await createInvoice.mutateAsync(testData);
-    } else {
-      // Production environment - use production endpoint without scenarioId
-      const saleType = selectedScenario.salesType;
+      if (formEnvironmentMode === 'TEST') {
+        // Test environment - use regular endpoint with scenarioId
+        const salesType = selectedScenario.salesType;
 
-      const prodData: CreateProductionInvoiceRequest = {
-        invoiceType: formData.invoiceType,
-        invoiceDate: formData.invoiceDate,
-        buyerId: formData.buyerId,
-        invoiceRefNo: formData.invoiceRefNo,
-        items: formData.items.map(item => ({
-          ...item,
-          saleType: saleType,
-          // Convert extraTax from string to number for production API
-          extraTax: item.extraTax ? parseFloat(item.extraTax) : 0,
-        })),
-      };
-      await createProductionInvoice.mutateAsync(prodData);
+        const testData = {
+          ...formData,
+          items: formData.items.map(item => {
+            // Filter out empty custom fields for each item
+            const itemCustomFields = item.customFields?.filter(cf => cf.value.trim() !== '') || [];
+            return {
+              ...item,
+              saleType: salesType,
+              customFields: itemCustomFields.length > 0 ? itemCustomFields : undefined,
+            };
+          }),
+        };
+        response = await createInvoice.mutateAsync(testData);
+      } else {
+        // Production environment - use production endpoint without scenarioId
+        const saleType = selectedScenario.salesType;
+
+        const prodData: CreateProductionInvoiceRequest = {
+          invoiceType: formData.invoiceType,
+          invoiceDate: formData.invoiceDate,
+          buyerId: formData.buyerId,
+          invoiceRefNo: formData.invoiceRefNo,
+          items: formData.items.map(item => {
+            // Filter out empty custom fields for each item
+            const itemCustomFields = item.customFields?.filter(cf => cf.value.trim() !== '') || [];
+            return {
+              ...item,
+              saleType: saleType,
+              // Convert extraTax from string to number for production API
+              extraTax: item.extraTax ? parseFloat(item.extraTax) : 0,
+              customFields: itemCustomFields.length > 0 ? itemCustomFields : undefined,
+            };
+          }),
+        };
+        response = await createProductionInvoice.mutateAsync(prodData);
+      }
+
+      // Check if invoice was saved to database (FBR validation successful)
+      if (response?.savedToDatabase) {
+        // Success - close modal and reset form
+        setShowCreateModal(false);
+        resetForm();
+      } else {
+        // FBR validation failed - show appropriate error message
+        const fbrResponse = response?.fbrResponse;
+        const validationResponse = fbrResponse?.validationResponse;
+
+        if (validationResponse) {
+          let errorMessage = '';
+
+          // Check if there's a top-level error (like timeout)
+          if (validationResponse.error && validationResponse.error.trim() !== '') {
+            errorMessage = validationResponse.error;
+          } 
+          // Otherwise check for item-level errors
+          else if (validationResponse.invoiceStatuses && validationResponse.invoiceStatuses.length > 0) {
+            // Get the first item's error
+            const firstInvalidItem = validationResponse.invoiceStatuses.find((item: any) => 
+              item.status === 'Invalid' && item.error
+            );
+            if (firstInvalidItem) {
+              errorMessage = firstInvalidItem.error;
+            }
+          }
+
+          // Show the error message
+          if (errorMessage) {
+            toast.error(errorMessage, { duration: 8000 });
+          } else {
+            toast.error('Invoice posted to FBR but validation failed. Please check your data and try again.');
+          }
+        } else {
+          toast.error('Invoice posted to FBR but validation failed. Please check your data and try again.');
+        }
+      }
+    } catch (error) {
+      // Error already handled by the hook's onError
+      console.error('Error creating invoice:', error);
     }
-
-    setShowCreateModal(false);
-    resetForm();
   };
 
   // Delete invoice
@@ -474,7 +534,7 @@ export default function InvoicesPage() {
 
     setIsGeneratingPDF(true);
     try {
-      const pdfComponent = <InvoicePDF invoice={selectedInvoice} />;
+      const pdfComponent = <InvoicePDF invoice={selectedInvoice} printSettings={printSettings} customFields={customFieldsForPDF} />;
       const fileName = `Invoice_${selectedInvoice.fbrInvoiceNumber || selectedInvoice.id}_${new Date().toISOString().split('T')[0]}.pdf`;
 
       await downloadInvoicePDF(pdfComponent, fileName);
@@ -492,7 +552,7 @@ export default function InvoicesPage() {
 
     setIsPrinting(true);
     try {
-      const pdfComponent = <InvoicePDF invoice={selectedInvoice} />;
+      const pdfComponent = <InvoicePDF invoice={selectedInvoice} printSettings={printSettings} customFields={customFieldsForPDF} />;
 
       await printInvoicePDF(pdfComponent);
     } catch (error) {
@@ -520,7 +580,7 @@ export default function InvoicesPage() {
         productDescription: '',
         rate: '17%',
         uoM: 'PCS',
-        quantity: 1,
+        quantity: 0,
         totalValues: 0,
         valueSalesExcludingST: 0,
         fixedNotifiedValueOrRetailPrice: 0,
@@ -533,6 +593,7 @@ export default function InvoicesPage() {
         discount: 0,
         saleType: '',
         sroItemSerialNo: '',
+        customFields: [],
       }],
     });
   };
@@ -561,19 +622,29 @@ export default function InvoicesPage() {
               Manage your FBR invoices
             </p>
           </div>
-          <button
-            onClick={() => {
-              setShowCreateModal(true);
-              // Refetch data when modal opens to ensure latest data
-              refetchBuyers();
-              refetchHSCodes();
-              refetchScenarios();
-            }}
-            className="inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 sm:px-6 py-2.5 sm:py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 hover:shadow-emerald-900/50 hover:from-emerald-600 hover:to-emerald-700 transition-all duration-200 group"
-          >
-            <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2 group-hover:scale-110 transition-transform duration-200" />
-            Create Invoice
-          </button>
+          <div className="flex gap-2 sm:gap-3">
+            <button
+              onClick={() => setShowPrintSettingsModal(true)}
+              className="inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-white/10 backdrop-blur-sm border-2 border-white/20 px-4 sm:px-5 py-2.5 sm:py-3 text-sm font-semibold text-white hover:bg-white/20 hover:border-white/30 transition-all duration-200 group"
+              title="Configure Print Settings"
+            >
+              <Settings className="h-4 w-4 sm:h-5 sm:w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+              Print Settings
+            </button>
+            <button
+              onClick={() => {
+                setShowCreateModal(true);
+                // Refetch data when modal opens to ensure latest data
+                refetchBuyers();
+                refetchHSCodes();
+                refetchScenarios();
+              }}
+              className="inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 sm:px-6 py-2.5 sm:py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 hover:shadow-emerald-900/50 hover:from-emerald-600 hover:to-emerald-700 transition-all duration-200 group"
+            >
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2 group-hover:scale-110 transition-transform duration-200" />
+              Create Invoice
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -1029,9 +1100,10 @@ export default function InvoicesPage() {
                         <input
                           type="number"
                           required
-                          value={item.quantity === 1 ? '' : item.quantity}
-                          onChange={(e) => updateItem(index, 'quantity', e.target.value === '' ? 1 : parseFloat(e.target.value))}
-                          placeholder="1"
+                          step="any"
+                          value={item.quantity || ''}
+                          onChange={(e) => updateItem(index, 'quantity', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          placeholder="0"
                           className="w-full rounded-lg bg-white/5 backdrop-blur-sm border-2 border-white/20 px-3 py-2 text-sm text-white placeholder-stone-400 focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200"
                         />
                       </div>
@@ -1089,8 +1161,9 @@ export default function InvoicesPage() {
                           type="number"
                           required={formEnvironmentMode === 'TEST'}
                           step="0.01"
-                          value={item.fixedNotifiedValueOrRetailPrice}
+                          value={item.fixedNotifiedValueOrRetailPrice || ''}
                           onChange={(e) => updateItem(index, 'fixedNotifiedValueOrRetailPrice', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          placeholder="0.00"
                           className="w-full rounded-lg bg-white/5 backdrop-blur-sm border-2 border-white/20 px-3 py-2 text-sm text-white placeholder-stone-400 focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200"
                         />
                       </div>
@@ -1190,6 +1263,78 @@ export default function InvoicesPage() {
                           ))}
                         </select>
                       </div>
+
+                      {/* Custom Fields for this Item */}
+                      {customFields.length > 0 && (
+                        <div className="md:col-span-3 mt-4 pt-4 border-t border-violet-500/20">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-violet-500/10 border border-violet-500/30">
+                              <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
+                              <span className="text-xs font-semibold text-violet-200 uppercase tracking-wide">Custom Fields</span>
+                            </div>
+                            <span className="text-xs text-stone-400">(Optional - for internal tracking)</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {customFields.map((field) => {
+                              const fieldValue = item.customFields?.find(f => f.customFieldId === field.id)?.value || '';
+                              
+                              return (
+                                <div key={field.id}>
+                                  <label className="block text-xs font-semibold text-stone-200 mb-1">
+                                    {field.fieldName}
+                                  </label>
+                                  {field.fieldType === 'textarea' ? (
+                                    <textarea
+                                      value={fieldValue}
+                                      onChange={(e) => {
+                                        const newValue = e.target.value;
+                                        const updatedItems = [...formData.items];
+                                        const currentCustomFields = updatedItems[index].customFields || [];
+                                        const existingFieldIndex = currentCustomFields.findIndex(f => f.customFieldId === field.id);
+                                        
+                                        if (existingFieldIndex >= 0) {
+                                          currentCustomFields[existingFieldIndex].value = newValue;
+                                        } else {
+                                          currentCustomFields.push({ customFieldId: field.id, value: newValue });
+                                        }
+                                        
+                                        updatedItems[index] = { ...updatedItems[index], customFields: currentCustomFields };
+                                        setFormData({ ...formData, items: updatedItems });
+                                      }}
+                                      rows={3}
+                                      className="w-full rounded-lg bg-white/5 backdrop-blur-sm border-2 border-white/20 px-3 py-2 text-sm text-white placeholder-stone-400 focus:border-violet-400/50 focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all duration-200"
+                                      placeholder={`Enter ${field.fieldName.toLowerCase()}`}
+                                    />
+                                  ) : (
+                                    <input
+                                      type={field.fieldType === 'number' ? 'number' : field.fieldType === 'date' ? 'date' : 'text'}
+                                      value={fieldValue}
+                                      onChange={(e) => {
+                                        const newValue = e.target.value;
+                                        const updatedItems = [...formData.items];
+                                        const currentCustomFields = updatedItems[index].customFields || [];
+                                        const existingFieldIndex = currentCustomFields.findIndex(f => f.customFieldId === field.id);
+                                        
+                                        if (existingFieldIndex >= 0) {
+                                          currentCustomFields[existingFieldIndex].value = newValue;
+                                        } else {
+                                          currentCustomFields.push({ customFieldId: field.id, value: newValue });
+                                        }
+                                        
+                                        updatedItems[index] = { ...updatedItems[index], customFields: currentCustomFields };
+                                        setFormData({ ...formData, items: updatedItems });
+                                      }}
+                                      className="w-full rounded-lg bg-white/5 backdrop-blur-sm border-2 border-white/20 px-3 py-2 text-sm text-white placeholder-stone-400 focus:border-violet-400/50 focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all duration-200"
+                                      placeholder={`Enter ${field.fieldName.toLowerCase()}`}
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1412,6 +1557,31 @@ export default function InvoicesPage() {
                             )}
                           </div>
                         )}
+
+                        {/* Custom Fields for this Item */}
+                        {item.customFieldValues && item.customFieldValues.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-violet-500/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
+                              <span className="text-xs font-semibold text-violet-200 uppercase tracking-wide">Custom Fields</span>
+                            </div>
+                            <div className="grid gap-2 md:grid-cols-2">
+                              {item.customFieldValues.map((fieldValue) => (
+                                <div key={fieldValue.id} className="border border-violet-500/20 rounded-lg p-2 bg-gradient-to-br from-violet-500/5 to-purple-500/5 backdrop-blur-sm">
+                                  <label className="text-xs font-semibold text-violet-300 uppercase tracking-wide">
+                                    {fieldValue.customField?.fieldName || 'Unknown Field'}
+                                  </label>
+                                  <p className="text-sm font-bold text-white mt-0.5 break-words">
+                                    {fieldValue.value}
+                                  </p>
+                                  <span className="text-xs text-stone-400 mt-0.5 inline-block">
+                                    {fieldValue.customField?.fieldType || 'text'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))
                   ) : (
@@ -1526,6 +1696,12 @@ export default function InvoicesPage() {
           </div>
         </div>
       )}
+
+      {/* Print Settings Modal */}
+      <PrintSettingsModal
+        isOpen={showPrintSettingsModal}
+        onClose={() => setShowPrintSettingsModal(false)}
+      />
     </UserLayout>
   );
 }

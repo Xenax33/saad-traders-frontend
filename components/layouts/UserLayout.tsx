@@ -15,7 +15,8 @@ import {
   Mail,
   Building2,
   ShieldCheck,
-  Layers
+  Layers,
+  Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -63,6 +64,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     { name: 'Buyers', href: '/dashboard/buyers', icon: Users },
     { name: 'HS Codes', href: '/dashboard/hs-codes', icon: Package },
     { name: 'Scenarios', href: '/dashboard/scenarios', icon: Layers },
+    { name: 'Custom Fields', href: '/dashboard/custom-fields', icon: Sparkles },
     { name: 'Invoices', href: '/dashboard/invoices', icon: FileBarChart },
   ];
 

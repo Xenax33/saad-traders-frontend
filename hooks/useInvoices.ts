@@ -6,9 +6,10 @@ import toast from 'react-hot-toast';
 // Helper function to handle API errors with validation messages
 const handleApiError = (error: unknown, defaultMessage: string) => {
   const response = error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response ? error.response.data : null;
-  
+  console.log('API Error Response:', response);
   // Check for validation errors array
   if (response && typeof response === 'object' && 'errors' in response && Array.isArray(response.errors)) {
+    console.log('Validation Errors:', response.errors);
     // Show each validation error
     response.errors.forEach((err: { field: string; message: string }) => {
       toast.error(`${err.field}: ${err.message}`);
@@ -16,6 +17,7 @@ const handleApiError = (error: unknown, defaultMessage: string) => {
   } else {
     // Show general error message
     const message = response && typeof response === 'object' && 'message' in response && typeof response.message === 'string' ? response.message : defaultMessage;
+    console.log('General Error Message:', message);
     toast.error(message);
   }
 };
@@ -59,9 +61,11 @@ export function useCreateInvoice() {
 
   return useMutation({
     mutationFn: (data: CreateInvoiceRequest) => invoiceService.createInvoice(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
-      toast.success('Invoice created and posted to FBR successfully');
+    onSuccess: (response: any) => {
+      if (response.savedToDatabase) {
+        queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+        toast.success('Invoice created and posted to FBR successfully');
+      }
     },
     onError: (error: unknown) => {
       handleApiError(error, 'Failed to create invoice');
@@ -77,9 +81,13 @@ export function useCreateProductionInvoice() {
 
   return useMutation({
     mutationFn: (data: CreateProductionInvoiceRequest) => invoiceService.createProductionInvoice(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
-      toast.success('Invoice created and posted to FBR production successfully');
+    onSuccess: (response: any) => {
+      // Check if invoice was saved to database (FBR validation successful)
+      if (response.savedToDatabase) {
+        queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+        toast.success('Invoice created and posted to FBR production successfully');
+      }
+      // If validation failed, the error will be handled by the component
     },
     onError: (error: unknown) => {
       handleApiError(error, 'Failed to create production invoice');

@@ -242,6 +242,8 @@ export interface InvoiceItem {
   discount: number;
   saleType: string;
   sroItemSerialNo: string;
+  customFields?: InvoiceCustomField[];
+  customFieldValues?: CustomFieldValue[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -296,4 +298,105 @@ export interface ValidateInvoiceResponse {
     invoiceNumber: string;
     validationResult: Record<string, unknown>;
   };
+}
+
+/**
+ * Custom Fields types
+ */
+export interface CustomField {
+  id: string;
+  userId: string;
+  fieldName: string;
+  fieldType: 'text' | 'number' | 'date' | 'textarea';
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCustomFieldRequest {
+  fieldName: string;
+  fieldType: 'text' | 'number' | 'date' | 'textarea';
+}
+
+export interface UpdateCustomFieldRequest {
+  fieldName?: string;
+  fieldType?: 'text' | 'number' | 'date' | 'textarea';
+  isActive?: boolean;
+}
+
+export interface CustomFieldValue {
+  id: string;
+  invoiceItemId: string;
+  customFieldId: string;
+  value: string;
+  customField?: CustomField;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvoiceCustomField {
+  customFieldId: string;
+  value: string;
+}
+
+/**
+ * Invoice Print Settings types
+ */
+export interface PrintSettings {
+  id: string;
+  userId: string;
+  visibleFields: string[]; // Now includes both regular fields and "customField_{uuid}" entries
+  columnWidths: Record<string, number>; // Includes widths for custom fields too
+  fontSize: 'small' | 'medium' | 'large';
+  tableBorders: boolean;
+  showItemNumbers: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SavePrintSettingsRequest {
+  visibleFields: string[]; // Array of field keys including custom fields with "customField_" prefix
+  columnWidths: Record<string, number>; // Width percentages for all visible fields
+  fontSize: 'small' | 'medium' | 'large';
+  tableBorders: boolean;
+  showItemNumbers: boolean;
+}
+
+export interface DefaultPrintSettings {
+  visibleFields: string[];
+  columnWidths: Record<string, number>;
+  fontSize: 'small' | 'medium' | 'large';
+  tableBorders: boolean;
+  showItemNumbers: boolean;
+}
+
+export interface AvailableField {
+  key: string;
+  label: string;
+  description: string;
+  category: string;
+  defaultVisible: boolean;
+  minWidth: number;
+  maxWidth: number;
+  required: boolean;
+}
+
+export interface FieldCategory {
+  key: string;
+  label: string;
+  order: number;
+}
+
+export interface CustomFieldOption {
+  key: string; // "customField_{uuid}"
+  id: string; // Just the UUID
+  label: string;
+  fieldName: string;
+  fieldType: 'text' | 'number' | 'date' | 'textarea';
+  description: string;
+  category: 'custom';
+  defaultVisible: boolean;
+  minWidth: number;
+  maxWidth: number;
+  required: boolean;
 }

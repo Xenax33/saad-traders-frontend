@@ -1,6 +1,6 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image, Link } from '@react-pdf/renderer';
-import type { Invoice } from '@/types/api';
+import type { Invoice, PrintSettings, DefaultPrintSettings, CustomFieldOption } from '@/types/api';
 
 // Professional PDF Styles - Clean, No Shiny Colors
 const styles = StyleSheet.create({
@@ -112,11 +112,19 @@ const styles = StyleSheet.create({
     color: '#000000',
     textTransform: 'uppercase',
     lineHeight: 1.3,
+    borderRightWidth: 0.5,
+    borderRightColor: '#000000',
+    borderRightStyle: 'solid',
+    paddingHorizontal: 4,
   },
   tableCol: {
     fontSize: 9,
     color: '#000000',
     lineHeight: 1.3,
+    borderRightWidth: 0.5,
+    borderRightColor: '#303030',
+    borderRightStyle: 'solid',
+    paddingHorizontal: 4,
   },
   // Column Widths - Fixed widths optimized for content
   col1: {
@@ -280,9 +288,121 @@ const styles = StyleSheet.create({
 interface InvoicePDFProps {
   invoice: Invoice;
   qrCodeDataURL?: string;
+  printSettings?: PrintSettings | DefaultPrintSettings | null;
+  customFields?: CustomFieldOption[];
 }
 
-export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice }) => {
+export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, printSettings, customFields }) => {
+  // Default settings if none provided
+  const defaultVisibleFields = [
+    'itemNumber',
+    'productDescription',
+    'hsCode',
+    'quantity',
+    'uoM',
+    'rate',
+    'totalValues',
+    'valueSalesExcludingST',
+    'salesTaxApplicable'
+  ];
+
+  const visibleFields = printSettings?.visibleFields || defaultVisibleFields;
+  const columnWidths = printSettings?.columnWidths || {};
+  const fontSize = printSettings?.fontSize || 'small';
+  const tableBorders = printSettings?.tableBorders !== false;
+  const showItemNumbers = printSettings?.showItemNumbers !== false;
+
+  // Font sizes
+  const fontSizeMap = {
+    small: 9,
+    medium: 10,
+    large: 11,
+  };
+  const cellFontSize = fontSizeMap[fontSize];
+
+  // Field labels and getter functions
+  const fieldConfig: Record<string, { label: string; getValue: (item: any, index: number) => string }> = {
+    itemNumber: {
+      label: '#',
+      getValue: (item, index) => String(index + 1),
+    },
+    productDescription: {
+      label: 'Description',
+      getValue: (item) => item.productDescription || 'N/A',
+    },
+    hsCode: {
+      label: 'HS Code',
+      getValue: (item) => item.hsCode?.hsCode || 'N/A',
+    },
+    quantity: {
+      label: 'Qty',
+      getValue: (item) => String(item.quantity || 0),
+    },
+    uoM: {
+      label: 'UoM',
+      getValue: (item) => item.uoM || 'N/A',
+    },
+    rate: {
+      label: 'Sale Tax',
+      getValue: (item) => String(item.rate || 0),
+    },
+    totalValues: {
+      label: 'Total',
+      getValue: (item) => parseFloat(item.totalValues?.toString() || '0').toFixed(2),
+    },
+    valueSalesExcludingST: {
+      label: 'Total (Excl. Tax)',
+      getValue: (item) => parseFloat(item.valueSalesExcludingST?.toString() || '0').toFixed(2),
+    },
+    fixedNotifiedValueOrRetailPrice: {
+      label: 'Retail Price',
+      getValue: (item) => parseFloat(item.fixedNotifiedValueOrRetailPrice?.toString() || '0').toFixed(2),
+    },
+    salesTaxApplicable: {
+      label: 'Sales Tax',
+      getValue: (item) => parseFloat(item.salesTaxApplicable?.toString() || '0').toFixed(2),
+    },
+    salesTaxWithheldAtSource: {
+      label: 'Tax Withheld',
+      getValue: (item) => parseFloat(item.salesTaxWithheldAtSource?.toString() || '0').toFixed(2),
+    },
+    furtherTax: {
+      label: 'Further Tax',
+      getValue: (item) => parseFloat(item.furtherTax?.toString() || '0').toFixed(2),
+    },
+    fedPayable: {
+      label: 'FED Payable',
+      getValue: (item) => parseFloat(item.fedPayable?.toString() || '0').toFixed(2),
+    },
+    discount: {
+      label: 'Discount',
+      getValue: (item) => parseFloat(item.discount?.toString() || '0').toFixed(2),
+    },
+    sroScheduleNo: {
+      label: 'SRO Schedule',
+      getValue: (item) => item.sroScheduleNo || '—',
+    },
+    sroItemSerialNo: {
+      label: 'SRO Item',
+      getValue: (item) => item.sroItemSerialNo || '—',
+    },
+  };
+
+  // Add custom fields to fieldConfig dynamically
+  if (customFields && customFields.length > 0) {
+    customFields.forEach(cf => {
+      fieldConfig[cf.key] = {
+        label: cf.label,
+        getValue: (item) => {
+          const customFieldValue = item.customFields?.find(
+            (icf: any) => icf.customFieldId === cf.id
+          );
+          return customFieldValue?.value || '—';
+        },
+      };
+    });
+  }
+
   // Calculate totals
   const calculateTotals = () => {
     let subtotal = 0;
@@ -409,42 +529,64 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice }) => {
           <Text style={styles.sectionTitle}>Invoice Items</Text>
           
           {/* Table Header */}
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableColHeader, styles.col1]}>#</Text>
-            <Text style={[styles.tableColHeader, styles.col2]}>HS Code</Text>
-            <Text style={[styles.tableColHeader, styles.col3]}>Description</Text>
-            <Text style={[styles.tableColHeader, styles.col4]}>Qty</Text>
-            <Text style={[styles.tableColHeader, styles.col5]}>UoM</Text>
-            <Text style={[styles.tableColHeader, styles.col6]}>Rate</Text>
-            <Text style={[styles.tableColHeader, styles.colSroSchedule]}>SRO Schedule</Text>
-            <Text style={[styles.tableColHeader, styles.colSroItem]}>SRO Item</Text>
+          <View style={[
+            styles.tableHeader,
+            ...(tableBorders ? [] : [{ borderTopWidth: 1, borderBottomWidth: 1 }])
+          ]}>
+            {visibleFields.map((fieldKey) => {
+              const config = fieldConfig[fieldKey];
+              if (!config) return null;
+
+              const width = columnWidths[fieldKey] || 10;
+              
+              return (
+                <Text 
+                  key={fieldKey}
+                  style={[
+                    styles.tableColHeader,
+                    { 
+                      width: `${width}%`,
+                      fontSize: cellFontSize
+                    }
+                  ]}
+                >
+                  {config.label}
+                </Text>
+              );
+            })}
           </View>
 
           {/* Table Rows */}
           {invoice.items?.map((item, index) => (
-            <View key={index} style={styles.tableRow}>
-              <Text style={[styles.tableCol, styles.col1]}>{index + 1}</Text>
-              <Text style={[styles.tableCol, styles.col2]}>
-                {item.hsCode?.hsCode || 'N/A'}
-              </Text>
-              <Text style={[styles.tableCol, styles.col3]}>
-                {item.productDescription}
-              </Text>
-              <Text style={[styles.tableCol, styles.col4]}>
-                {item.quantity}
-              </Text>
-              <Text style={[styles.tableCol, styles.col5]}>
-                {item.uoM}
-              </Text>
-              <Text style={[styles.tableCol, styles.col6]}>
-                {item.rate}
-              </Text>
-              <Text style={[styles.tableCol, styles.colSroSchedule]}>
-                {item.sroScheduleNo || '—'}
-              </Text>
-              <Text style={[styles.tableCol, styles.colSroItem]}>
-                {item.sroItemSerialNo || '—'}
-              </Text>
+            <View 
+              key={index} 
+              style={[
+                styles.tableRow,
+                ...(tableBorders ? [] : [{ borderBottomWidth: 0.5 }])
+              ]}
+            >
+              {visibleFields.map((fieldKey) => {
+                const config = fieldConfig[fieldKey];
+                if (!config) return null;
+
+                const width = columnWidths[fieldKey] || 10;
+                const value = config.getValue(item, index);
+                
+                return (
+                  <Text 
+                    key={fieldKey}
+                    style={[
+                      styles.tableCol,
+                      { 
+                        width: `${width}%`,
+                        fontSize: cellFontSize
+                      }
+                    ]}
+                  >
+                    {value}
+                  </Text>
+                );
+              })}
             </View>
           ))}
         </View>
