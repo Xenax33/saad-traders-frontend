@@ -64,7 +64,11 @@ export default function LoginPage() {
       // Successful login without MFA - redirect based on role
       const redirectPath = response?.user?.role === 'ADMIN' ? '/admin' : '/dashboard';
       toast.success('Login successful!');
-      router.push(redirectPath);
+      
+      // Use window.location.href for reliable redirect in production
+      setTimeout(() => {
+        window.location.href = redirectPath;
+      }, 500);
     } catch (error: any) {
       console.error('Login failed:', error);
       hideLoading();
@@ -107,7 +111,7 @@ export default function LoginPage() {
     const redirectPath = userData?.role === 'ADMIN' ? '/admin' : '/dashboard';
     
     toast.success('Login successful!');
-    router.push(redirectPath);
+    window.location.href = redirectPath;
   };
 
   return (

@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await authService.logout();
       setUser(null);
       toast.success('Logged out successfully');
-      router.push(redirectPath || '/login');
+      window.location.href = redirectPath || '/login';
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Logout failed');
