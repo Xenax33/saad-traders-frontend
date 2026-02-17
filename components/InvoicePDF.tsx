@@ -7,7 +7,7 @@ const styles = StyleSheet.create({
   page: {
     backgroundColor: '#FFFFFF',
     padding: 30,
-    paddingBottom: 120, // Extra space for footer with logo and QR
+    paddingBottom: 60,
     fontFamily: 'Helvetica',
   },
   // Header Section
@@ -231,7 +231,10 @@ const styles = StyleSheet.create({
   },
   // Footer
   footer: {
-    marginTop: 20,
+    position: 'absolute',
+    bottom: 30,
+    left: 30,
+    right: 30,
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#CCCCCC',
@@ -431,10 +434,10 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, printSettings, 
   const totals = calculateTotals();
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={styles.page} wrap>
 
         {/* Invoice Information */}
-        <View style={styles.infoSection}>
+        <View style={styles.infoSection} wrap={false}>
           <Text style={styles.sectionTitle}>Invoice Information</Text>
           <View style={styles.infoGrid}>
             <View style={styles.infoColumn}>
@@ -467,7 +470,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, printSettings, 
         </View>
 
         {/* Seller Information */}
-        <View style={styles.infoSection}>
+        <View style={styles.infoSection} wrap={false}>
           <Text style={styles.sectionTitle}>Seller Information</Text>
           <View style={styles.infoGrid}>
             <View style={styles.infoColumn}>
@@ -494,7 +497,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, printSettings, 
         </View>
 
         {/* Buyer Information */}
-        <View style={styles.infoSection}>
+        <View style={styles.infoSection} wrap={false}>
           <Text style={styles.sectionTitle}>Buyer Information</Text>
           <View style={styles.infoGrid}>
             <View style={styles.infoColumn}>
@@ -525,7 +528,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, printSettings, 
         </View>
 
         {/* Items Table */}
-        <View style={styles.table}>
+        <View style={styles.table} wrap={false}>
           <Text style={styles.sectionTitle}>Invoice Items</Text>
           
           {/* Table Header */}
@@ -564,6 +567,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, printSettings, 
                 styles.tableRow,
                 ...(tableBorders ? [] : [{ borderBottomWidth: 0.5 }])
               ]}
+              wrap={false}
             >
               {visibleFields.map((fieldKey) => {
                 const config = fieldConfig[fieldKey];
@@ -592,7 +596,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, printSettings, 
         </View>
 
         {/* Totals */}
-        <View style={styles.totalsSection}>
+        <View style={styles.totalsSection} wrap={false}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal (Excl. Tax):</Text>
             <Text style={styles.totalValue}>Rs. {totals.subtotal.toFixed(2)}</Text>

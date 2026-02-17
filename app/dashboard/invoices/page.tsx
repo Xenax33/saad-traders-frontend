@@ -1110,14 +1110,14 @@ export default function InvoicesPage() {
 
                       <div>
                         <label className="block text-xs font-semibold text-stone-200 mb-1">
-                          Total Value <span className="text-red-400">*</span>
+                          Retail Price {formEnvironmentMode === 'TEST' && <span className="text-red-400">*</span>}
                         </label>
                         <input
                           type="number"
-                          required
+                          required={formEnvironmentMode === 'TEST'}
                           step="0.01"
-                          value={item.totalValues || ''}
-                          onChange={(e) => updateItem(index, 'totalValues', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          value={item.fixedNotifiedValueOrRetailPrice || ''}
+                          onChange={(e) => updateItem(index, 'fixedNotifiedValueOrRetailPrice', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                           placeholder="0.00"
                           className="w-full rounded-lg bg-white/5 backdrop-blur-sm border-2 border-white/20 px-3 py-2 text-sm text-white placeholder-stone-400 focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200"
                         />
@@ -1140,6 +1140,21 @@ export default function InvoicesPage() {
 
                       <div>
                         <label className="block text-xs font-semibold text-stone-200 mb-1">
+                          Total Value <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          step="0.01"
+                          value={item.totalValues || ''}
+                          onChange={(e) => updateItem(index, 'totalValues', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          placeholder="0.00"
+                          className="w-full rounded-lg bg-white/5 backdrop-blur-sm border-2 border-white/20 px-3 py-2 text-sm text-white placeholder-stone-400 focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-200 mb-1">
                           Sales Tax <span className="text-red-400">*</span>
                         </label>
                         <input
@@ -1148,21 +1163,6 @@ export default function InvoicesPage() {
                           step="0.01"
                           value={item.salesTaxApplicable || ''}
                           onChange={(e) => updateItem(index, 'salesTaxApplicable', e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                          placeholder="0.00"
-                          className="w-full rounded-lg bg-white/5 backdrop-blur-sm border-2 border-white/20 px-3 py-2 text-sm text-white placeholder-stone-400 focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-stone-200 mb-1">
-                          Retail Price {formEnvironmentMode === 'TEST' && <span className="text-red-400">*</span>}
-                        </label>
-                        <input
-                          type="number"
-                          required={formEnvironmentMode === 'TEST'}
-                          step="0.01"
-                          value={item.fixedNotifiedValueOrRetailPrice || ''}
-                          onChange={(e) => updateItem(index, 'fixedNotifiedValueOrRetailPrice', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                           placeholder="0.00"
                           className="w-full rounded-lg bg-white/5 backdrop-blur-sm border-2 border-white/20 px-3 py-2 text-sm text-white placeholder-stone-400 focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200"
                         />
