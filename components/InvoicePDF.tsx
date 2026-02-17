@@ -397,10 +397,23 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, printSettings, 
       fieldConfig[cf.key] = {
         label: cf.label,
         getValue: (item) => {
-          const customFieldValue = item.customFields?.find(
-            (icf: any) => icf.customFieldId === cf.id
-          );
-          return customFieldValue?.value || '—';
+          if (item.customFieldValues && Array.isArray(item.customFieldValues)) {
+            const customFieldValue = item.customFieldValues.find(
+              (icf: any) => icf.customFieldId === cf.id
+            );
+            if (customFieldValue && customFieldValue.value !== null && customFieldValue.value !== undefined) {
+              return String(customFieldValue.value);
+            }
+          }
+          if (item.customFields && Array.isArray(item.customFields)) {
+            const legacyField = item.customFields.find(
+              (icf: any) => icf.customFieldId === cf.id
+            );
+            if (legacyField && legacyField.value !== null && legacyField.value !== undefined) {
+              return String(legacyField.value);
+            }
+          }
+          return '—';
         },
       };
     });
